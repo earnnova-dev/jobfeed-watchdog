@@ -1,0 +1,12 @@
+{
+  "feeds": [
+    {
+      "id": "remote-jobs-api",
+      "url": "https://remote-jobs-api.tten.no/v1/jobs",
+      "record_path": "jobs",
+      "count_ratio": 0.5,
+      "min_count": 5,
+      "timeout": 30
+    }
+  ]
+}

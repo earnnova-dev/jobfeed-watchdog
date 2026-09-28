@@ -1,0 +1,59 @@
+# jobfeed-watchdog — monitor a job feed (or any JSON/YAML list-of-records
+# endpoint) for silent breakage and fail the build so you get notified.
+#
+# HOW TO USE
+#   1. Copy this folder (watchfeed.py + this workflow) into your repo, OR use
+#      it as a composite/template action.
+#   2. Edit `feeds:` in the job below — one entry per feed you care about.
+#   3. Push. It runs on schedule + workflow_dispatch. When a feed breaks, the
+#      step fails and the whole run turns red (visible in the Actions UI, and
+#      can trigger a Slack/email/Discord notification from your repo settings).
+#
+# State: the current schema+count snapshot for each feed is committed back to
+# `state/<id>.baseline.json` so runs are reproducible and you can diff what
+# changed.
+name: Job Feed Watchdog
+
+on:
+  schedule:
+    # Every 6 hours, on the hour (00:00, 06:00, 12:00, 18:00 UTC).
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore baseline state
+        if: github.event_name == 'schedule'
+        run: |
+          mkdir -p state
+          git ls-files state | while read -r f; do
+            git cat-file -p "HEAD:$f" > "$f"
+          done || true
+
+      - name: Check feeds
+        id: check
+        run: |
+          echo "CONFIGURED FEEDS:"
+          cat feeds.json
+          echo "---- running watchdog ----"
+          python3 watchfeed.py feeds.json state || status=$?
+          if [ -n "$status" ]; then
+            # Fail the job so the run turns red and you get notified.
+            echo "::error::Job feed breakage detected (see report above)"
+            exit 1
+          fi
+
+      - name: Commit new baseline (only when healthy, so we never "bless" a broken feed)
+        if: steps.check.outcome == 'success'
+        run: |
+          git config user.name "jobfeed-watchdog"
+          git config user.email "jobfeed-watchdog@users.noreply.github.com"
+          git add state || true
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(watchdog): update feed baselines $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push
+          fi
