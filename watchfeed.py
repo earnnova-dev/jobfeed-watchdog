@@ -258,10 +258,15 @@ def main(argv=None):
         if problems:
             any_problem = True
 
-        # Persist the current snapshot as the new baseline (always, so the next
-        # run compares against a fresh, known-good state).
-        with open(bpath, "w") as fh:
-            json.dump(current, fh, sort_keys=True, indent=2)
+        # Persist the current snapshot as the new baseline ONLY when the feed
+        # is healthy. Overwriting the baseline with a broken snapshot would make
+        # the next run compare broken-to-broken and report "all healthy",
+        # silently absorbing the regression this tool exists to catch. Holding
+        # the last known-good baseline keeps the run red until the feed recovers
+        # (or a human commits a new baseline to accept a genuine schema change).
+        if entry["ok"]:
+            with open(bpath, "w") as fh:
+                json.dump(current, fh, sort_keys=True, indent=2)
 
         report.append(entry)
 

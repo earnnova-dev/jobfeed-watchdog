@@ -120,6 +120,42 @@ def test_load_config_list_json():
     os.unlink(path)
 
 
+def test_broken_feed_not_blessed_as_baseline():
+    """Regression guard for the core value prop: a broken feed must keep the
+    last known-good baseline so the run STAYS red until the feed recovers.
+    (Pre-fix, the baseline was overwritten with the broken snapshot, so the
+    second run reported 'all healthy' and the tool went silent mid-incident.)
+    Offline: monkeypatch fetch, no network."""
+    state = tempfile.mkdtemp()
+    cfg = os.path.join(state, "cfg.json")
+    with open(cfg, "w") as f:
+        json.dump({"feeds": [{"id": "f", "url": "http://x/",
+                              "record_path": "jobs", "count_ratio": 0.5}]}, f)
+    healthy = json.dumps({"jobs": [{"id": i, "title": "J%d" % i,
+                                    "salary": 100 + i, "loc": "OSLO"}
+                                   for i in range(50)]})
+    broken = json.dumps({"jobs": [{"id": i, "title": "J%d" % i} for i in range(3)]})
+    body = {"v": healthy}
+    real_fetch = wf.fetch
+    wf.fetch = lambda url, timeout=30, headers=None: body["v"]
+    try:
+        # 1) establish a healthy baseline
+        assert wf.main([cfg, state]) == 0
+        bl = json.load(open(os.path.join(state, "f.baseline.json")))
+        assert bl["count"] == 50
+        # 2) feed breaks: must alarm AND must NOT bless the broken snapshot
+        body["v"] = broken
+        assert wf.main([cfg, state]) == 1
+        bl = json.load(open(os.path.join(state, "f.baseline.json")))
+        assert bl["count"] == 50, "broken snapshot was blessed as new baseline"
+        # 3) still broken: must STILL alarm (silent absorption is the bug)
+        assert wf.main([cfg, state]) == 1
+        bl = json.load(open(os.path.join(state, "f.baseline.json")))
+        assert bl["count"] == 50
+    finally:
+        wf.fetch = real_fetch
+
+
 if __name__ == "__main__":
     # Minimal runner so it works without pytest installed.
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
