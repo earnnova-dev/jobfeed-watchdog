@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monitor a JSON API Feed for Silent Breakage with a GitHub Action (2026)</title>
+  <meta name="description" content="A dependency-light GitHub Action that fails your build when a job feed or JSON/YAML API endpoint silently breaks - schema change, record-count collapse, or outage. No server, no billing, no secrets.">
+  <meta name="keywords" content="monitor api feed breakage, detect api data regression, github action monitor json api, job feed monitoring, api schema change alert, data feed health check, monitor json endpoint, github action alert on data change">
+  <link rel="canonical" href="https://earnnova-dev.github.io/jobfeed-watchdog/">
+  <meta property="og:title" content="Detect silent API feed breakage with a GitHub Action (2026)">
+  <meta property="og:description" content="Fails the build when a feed's schema, record count, or availability regresses. Stdlib-only, no server, no secrets.">
+  <meta property="og:type" content="website">
+  <style>
+    :root{--bg:#0b1020;--card:#121a30;--ink:#e8ecf5;--mut:#9aa6c4;--acc:#5b8cff;--ok:#37d39b;--bad:#ff6b6b;--code:#0e1526}
+    *{box-sizing:border-box}
+    body{margin:0;font:16px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+    a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+    .wrap{max-width:880px;margin:0 auto;padding:0 20px}
+    header{padding:48px 0 24px}
+    h1{font-size:34px;line-height:1.2;margin:0 0 12px}
+    .sub{color:var(--mut);font-size:18px;margin:0 0 20px}
+    .cta{display:inline-block;background:var(--acc);color:#fff;padding:12px 22px;border-radius:10px;font-weight:600}
+    .cta:hover{filter:brightness(1.08);text-decoration:none}
+    section{background:var(--card);border:1px solid #1c2743;border-radius:14px;padding:24px;margin:22px 0}
+    h2{font-size:23px;margin:0 0 12px}
+    pre{background:var(--code);border:1px solid #1c2743;border-radius:10px;padding:16px;overflow:auto;font:13.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+    code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+    p code{background:#0e1526;padding:2px 6px;border-radius:5px}
+    ul{margin:8px 0 8px 20px} li{margin:6px 0}
+    table{width:100%;border-collapse:collapse;font-size:15px}
+    th,td{text-align:left;padding:9px 12px;border-bottom:1px solid #1c2743}
+    th{color:var(--mut);font-weight:600}
+    .badge{display:inline-block;background:#0e1526;border:1px solid #1c2743;border-radius:999px;padding:3px 12px;font-size:13px;color:var(--mut);margin:0 6px 6px 0}
+    footer{padding:32px 0 48px;color:var(--mut);font-size:14px}
+  </style>
+</head>
+<body>
+  <header class="wrap">
+    <h1>Catch silent API feed breakage before it hits your dashboard</h1>
+    <p class="sub">A tiny, dependency-light <a href="https://github.com/earnnova-dev/jobfeed-watchdog">GitHub Action</a> that <strong>fails the build</strong> the moment a job feed &mdash; or any JSON/YAML endpoint returning a list of records &mdash; silently breaks: a schema change, a record-count collapse, or an outright outage.</p>
+    <a class="cta" href="#install">Set it up in 30 seconds</a>
+  </header>
+
+  <main class="wrap">
+    <section>
+      <h2>The problem it solves</h2>
+      <p>Feed consumers find out about breakage too late. A parser change quietly returns 5 records instead of 300, a required field disappears, or the upstream goes down &mdash; and <em>nothing pages anyone</em> until a dashboard goes blank or a user complains.</p>
+      <p><code>jobfeed-watchdog</code> runs a structural fingerprint on every schedule and turns the GitHub Actions run <strong style="color:var(--bad)">red</strong> when something regresses, so your normal Actions notifications (email / Slack / Discord) fire automatically.</p>
+      <span class="badge">Stdlib-only core (urllib)</span>
+      <span class="badge">No server, no billing</span>
+      <span class="badge">No secrets required</span>
+      <span class="badge">JSON + optional YAML</span>
+    </section>
+
+    <section>
+      <h2>What it checks, per feed</h2>
+      <table>
+        <tr><th>Signal</th><th>What it catches</th></tr>
+        <tr><td>Top-level container type change</td><td><code>list</code> &rarr; <code>dict</code> (or vice-versa)</td></tr>
+        <tr><td>Record key-set diff</td><td>a required field removed or renamed</td></tr>
+        <tr><td>Record-count floor</td><td><code>count_ratio</code> / <code>min_count</code> &mdash; &ldquo;parser broke, returns 5 of 300&rdquo;</td></tr>
+        <tr><td>Fetch / parse / HTTP error</td><td>feed down or malformed</td></tr>
+      </table>
+    </section>
+
+    <section id="install">
+      <h2>Install &amp; run (30 seconds)</h2>
+      <pre>git clone https://github.com/earnnova-dev/jobfeed-watchdog
+cd jobfeed-watchdog
+cp -r watchfeed.py .github/feeds.json /path/to/your/repo</pre>
+      <p>Then list the feeds you want watched in your repo&rsquo;s <code>feeds.json</code>:</p>
+      <pre>{
+  "feeds": [
+    {
+      "id": "remote-jobs-api",
+      "url": "https://remote-jobs-api.tten.no/v1/jobs",
+      "record_path": "jobs",
+      "count_ratio": 0.5,
+      "min_count": 5,
+      "timeout": 30
+    }
+  ]
+}</pre>
+      <ul>
+        <li><code>record_path</code> (optional): dotted path to the list, e.g. <code>results.jobs</code>. Omit when the response <em>is</em> the list.</li>
+        <li><code>count_ratio</code> (default <code>0.5</code>): current count must be &ge; baseline &times; ratio.</li>
+        <li><code>min_count</code> (default <code>0</code>): absolute floor.</li>
+        <li><code>headers</code> (optional): auth, etc.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>How it works</h2>
+      <ul>
+        <li>On each schedule (<code>0 */6 * * *</code> = every 6h, or <code>workflow_dispatch</code> for a manual run), it fetches each feed and computes a fingerprint: <code>{top-level container, sorted record key set, record count}</code>.</li>
+        <li>It compares against the last-known-good baseline committed to <code>state/&lt;id&gt;.baseline.json</code> &mdash; so runs are reproducible and you can <code>git diff</code> exactly what changed.</li>
+        <li>If any feed reports a problem, the step exits non-zero &rarr; the run turns red &rarr; your normal Actions notification fires.</li>
+        <li>Only when healthy does it commit the new baseline &mdash; it never &ldquo;blesses&rdquo; a broken feed as the new normal.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Run it locally</h2>
+      <pre>python3 watchfeed.py feeds.json /tmp/state     # JSON feed: no deps
+python3 watchfeed.py feeds.yml  /tmp/state     # YAML feed: needs `pip install pyyaml`
+python3 -m pytest tests/                        # offline test suite</pre>
+      <p>Exit codes: <code>0</code> all healthy &middot; <code>1</code> breakage detected &middot; <code>2</code> config/usage error.</p>
+    </section>
+
+    <section>
+      <h2>Who it&rsquo;s for</h2>
+      <ul>
+        <li>Job-board operators and any team that consumes a feed or API and needs to <strong>know immediately</strong> when it regresses.</li>
+        <li>Anyone who wants a cheap, self-hosted, git-diff-able data health check without standing up a monitoring stack.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    <p><a href="https://github.com/earnnova-dev/jobfeed-watchdog">github.com/earnnova-dev/jobfeed-watchdog</a> &middot; stdlib-only &middot; MIT-licensed template</p>
+    <p>Related: <a href="https://remote-jobs-api.tten.no">remote-jobs-api</a> (a live feed you can point this watchdog at) &middot; <a href="https://earnnova-dev.github.io/remote-jobs-export/">export remote job data to CSV/JSON/SQLite</a></p>
+  </footer>
+</body>
+</html>
