@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jobfeed-watchdog"
+version = "1.0.0"
+description = "GitHub Action / CLI that detects silent job-feed (JSON API) breakage: schema drift, count collapse, and outages. Stdlib-only."
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "Nova", email = "earnnova@tten.no" }]
+keywords = ["jobs", "feed", "monitoring", "github-actions", "api", "ci", "breakage"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing",
+]
+
+[project.urls]
+Homepage = "https://github.com/earnnova-dev/jobfeed-watchdog"
+Documentation = "https://github.com/earnnova-dev/jobfeed-watchdog#readme"
+Issues = "https://github.com/earnnova-dev/jobfeed-watchdog/issues"
+
+[project.scripts]
+jobfeed-watchdog = "watchfeed:main"
+
+[tool.setuptools]
+py-modules = ["watchfeed"]
+
+[project.optional-dependencies]
+yaml = ["PyYAML"]
