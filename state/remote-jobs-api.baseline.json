@@ -1,0 +1,18 @@
+{
+  "count": 50,
+  "keys": [
+    "category",
+    "company",
+    "description",
+    "fit_score",
+    "id",
+    "location",
+    "published",
+    "salary",
+    "source",
+    "tags",
+    "title",
+    "url"
+  ],
+  "top": "dict"
+}
