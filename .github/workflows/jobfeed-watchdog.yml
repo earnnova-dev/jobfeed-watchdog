@@ -23,6 +23,11 @@ on:
 jobs:
   watch:
     runs-on: ubuntu-latest
+    permissions:
+      # Needed so the "Commit new baseline" step can push the updated
+      # state/*.baseline.json back to the repo. Without this the Actions
+      # token is read-only and the push fails with 403.
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
