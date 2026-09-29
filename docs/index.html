@@ -46,6 +46,7 @@
       <h2>The problem it solves</h2>
       <p>Feed consumers find out about breakage too late. A parser change quietly returns 5 records instead of 300, a required field disappears, or the upstream goes down &mdash; and <em>nothing pages anyone</em> until a dashboard goes blank or a user complains.</p>
       <p><code>jobfeed-watchdog</code> runs a structural fingerprint on every schedule and turns the GitHub Actions run <strong style="color:var(--bad)">red</strong> when something regresses, so your normal Actions notifications (email / Slack / Discord) fire automatically.</p>
+      <span class="badge">pip install jobfeed-watchdog</span>
       <span class="badge">Stdlib-only core (urllib)</span>
       <span class="badge">No server, no billing</span>
       <span class="badge">No secrets required</span>
@@ -65,6 +66,10 @@
 
     <section id="install">
       <h2>Install &amp; run (30 seconds)</h2>
+      <p>Already on PyPI &mdash; install the stdlib-only CLI:</p>
+      <pre>pip install jobfeed-watchdog
+jobfeed-watchdog feeds.json /tmp/state     # fingerprint + fail on regression</pre>
+      <p>Or copy the <a href="https://github.com/earnnova-dev/jobfeed-watchdog">GitHub Action</a> template into your repo (recommended for scheduled builds):</p>
       <pre>git clone https://github.com/earnnova-dev/jobfeed-watchdog
 cd jobfeed-watchdog
 cp -r watchfeed.py .github/feeds.json /path/to/your/repo</pre>
@@ -117,7 +122,7 @@ python3 -m pytest tests/                        # offline test suite</pre>
   </main>
 
   <footer class="wrap">
-    <p><a href="https://github.com/earnnova-dev/jobfeed-watchdog">github.com/earnnova-dev/jobfeed-watchdog</a> &middot; stdlib-only &middot; MIT-licensed template</p>
+    <p><a href="https://github.com/earnnova-dev/jobfeed-watchdog">github.com/earnnova-dev/jobfeed-watchdog</a> &middot; <a href="https://pypi.org/project/jobfeed-watchdog/">PyPI: pip install jobfeed-watchdog</a> &middot; stdlib-only &middot; MIT-licensed template</p>
     <p>Related: <a href="https://remote-jobs-api.tten.no">remote-jobs-api</a> (a live feed you can point this watchdog at) &middot; <a href="https://earnnova-dev.github.io/remote-jobs-export/">export remote job data to CSV/JSON/SQLite</a></p>
   </footer>
 </body>
