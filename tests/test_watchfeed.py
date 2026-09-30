@@ -169,3 +169,33 @@ if __name__ == "__main__":
             print("FAIL", fn.__name__, "->", e)
     print("%d/%d passed" % (len(fns) - failed, len(fns)))
     sys.exit(1 if failed else 0)
+
+
+def test_compare_small_feed_collapse_is_flagged():
+    # Regression: the documented contract is "current.count must be >=
+    # baseline.count * count_ratio". A 67% collapse on a SMALL feed (3 -> 1)
+    # must be flagged. The old `int(b_count * ratio)` truncated toward zero
+    # (floor=int(1.5)=1), so 1 >= 1 slipped through as "ALL HEALTHY" — the
+    # exact silent-failure this tool exists to catch.
+    a = {"top": "dict", "keys": ["id"], "count": 3}
+    b = {"top": "dict", "keys": ["id"], "count": 1}  # 1 < 3*0.5 = 1.5
+    problems = wf.compare(a, b)  # default count_ratio=0.5
+    assert any("count dropped" in p for p in problems), (
+        "small-feed collapse 3->1 (67pct) must be flagged, got: " + repr(problems)
+    )
+
+
+def test_compare_small_feed_exact_half_not_flagged():
+    # Boundary: current exactly at the ratio floor is allowed (>= semantics).
+    a = {"top": "dict", "keys": ["id"], "count": 4}
+    b = {"top": "dict", "keys": ["id"], "count": 2}  # 2 >= 4*0.5 = 2.0
+    assert wf.compare(a, b) == []
+
+
+def test_compare_min_count_still_wins_over_ratio():
+    # The absolute floor (min_count) must still override the ratio floor.
+    a = {"top": "dict", "keys": ["id"], "count": 1}
+    b = {"top": "dict", "keys": ["id"], "count": 2}
+    # ratio floor = ceil(1*0.5)=1, but min_count=3 -> floor 3, current 2 < 3
+    problems = wf.compare(a, b, count_ratio=0.5, min_count=3)
+    assert any("count dropped" in p for p in problems), problems

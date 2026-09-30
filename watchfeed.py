@@ -19,6 +19,7 @@ Exit codes:
   2  usage / configuration error
 """
 import json
+import math
 import sys
 import urllib.request
 import urllib.error
@@ -151,7 +152,11 @@ def compare(baseline, current, count_ratio=0.5, min_count=0):
     b_count = baseline["count"]
     c_count = current["count"]
     if b_count > 0:
-        floor = max(min_count, int(b_count * count_ratio))
+        # ceil (not int/truncate): current must be >= baseline*ratio. A
+        # collapse strictly below the ratio floor must be flagged even on
+        # small feeds (e.g. 3 -> 1 at ratio 0.5). int() truncates toward
+        # zero and silently lets the collapse through.
+        floor = max(min_count, math.ceil(b_count * count_ratio))
         if c_count < floor:
             problems.append(
                 "record count dropped: %d -> %d (floor %d)" % (b_count, c_count, floor)
