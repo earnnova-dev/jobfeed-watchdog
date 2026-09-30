@@ -199,3 +199,23 @@ def test_compare_min_count_still_wins_over_ratio():
     # ratio floor = ceil(1*0.5)=1, but min_count=3 -> floor 3, current 2 < 3
     problems = wf.compare(a, b, count_ratio=0.5, min_count=3)
     assert any("count dropped" in p for p in problems), problems
+
+
+def test_fingerprint_record_path_resolving_to_nonlist_degrades_not_crashes():
+    # Regression: a mis-configured record_path that resolves to a NON-list node
+    # (e.g. a dict) used to crash fingerprint() with
+    # KeyError/TypeError from slicing a non-sequence (`records[:25]` on a dict).
+    # The documented contract is to degrade to an empty snapshot
+    # (count=0, keys=[]) — the same graceful fallback used when no records
+    # are located. A library/PyPI user must not get a traceback on a bad
+    # record_path; the fingerprint stays a well-formed dict.
+    data = {"data": {"meta": {"x": 1}, "items": [{"id": 1}]}}
+    fp = wf.fingerprint(data, record_path="data.meta")  # meta is a DICT, not a list
+    assert isinstance(fp, dict)
+    assert fp["count"] == 0
+    assert fp["keys"] == []
+    # The auto-detected correct list still works (regression guard against
+    # over-broadening the degrade path).
+    fp2 = wf.fingerprint(data, record_path="data.items")
+    assert fp2["count"] == 1
+    assert "id" in fp2["keys"]

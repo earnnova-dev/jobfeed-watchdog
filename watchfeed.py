@@ -109,6 +109,15 @@ def fingerprint(data, record_path=None):
     shape = top_level_shape(data)
     try:
         records = extract_records(data, record_path)
+        if not isinstance(records, list):
+            # A mis-configured record_path (or a feed whose records container
+            # is not a list, e.g. it resolves to a dict/scalar) used to crash
+            # record_key_set on `records[:sample]` (slicing a non-sequence).
+            # The documented contract is to degrade to an empty snapshot
+            # (count=0, keys=[]) — the same fallback used when no records are
+            # located — so a library/PyPI user gets a well-formed fingerprint,
+            # never a traceback, on a bad record_path.
+            records = []
         count = len(records)
         keys = sorted(record_key_set(records))
     except ValueError:
