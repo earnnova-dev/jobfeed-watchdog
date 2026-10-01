@@ -150,11 +150,19 @@ def compare(baseline, current, count_ratio=0.5, min_count=0):
             "top-level container changed: %s -> %s" % (baseline["top"], current["top"])
         )
 
-    if baseline["keys"] and current["keys"]:
+    # Missing keys are a schema break even when the CURRENT side has no keys
+    # left (records became non-dicts / empty dicts): the old gate
+    # `baseline["keys"] and current["keys"]` skipped the whole block when
+    # current["keys"] was empty, so a total key loss with an unchanged count
+    # was silently reported as "ALL HEALTHY" — the exact failure this tool
+    # exists to catch. Added keys are only reported when the current side
+    # actually has keys.
+    if baseline["keys"]:
         missing = [k for k in baseline["keys"] if k not in current["keys"]]
-        added = [k for k in current["keys"] if k not in baseline["keys"]]
         if missing:
             problems.append("records missing keys (possibly removed): %s" % ", ".join(missing))
+    if current["keys"]:
+        added = [k for k in current["keys"] if k not in baseline["keys"]]
         if added:
             problems.append("records added keys: %s" % ", ".join(added))
 

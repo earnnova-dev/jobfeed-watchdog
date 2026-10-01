@@ -201,6 +201,34 @@ def test_compare_min_count_still_wins_over_ratio():
     assert any("count dropped" in p for p in problems), problems
 
 
+def test_compare_records_lost_all_keys_is_flagged_not_silently_passed():
+    # Regression: when a feed's records LOSE ALL their keys (each record
+    # becomes a non-dict / empty dict) but the record COUNT is unchanged,
+    # the keys block in compare() was gated on `baseline["keys"] and
+    # current["keys"]` — so with current["keys"] empty the whole check was
+    # skipped and a total schema collapse was silently reported as
+    # "ALL HEALTHY". That is the exact silent failure this tool exists to
+    # catch. Missing keys (including a total loss) must be flagged regardless
+    # of whether the current side still has any keys.
+    baseline = {"top": "dict", "keys": ["id", "title", "salary"], "count": 50}
+    # 50 records, same count, but each is now a string -> fingerprint keys=[]
+    current = wf.fingerprint({"jobs": ["x"] * 50})
+    assert current["count"] == 50          # count unchanged (no count-drop signal)
+    assert current["keys"] == []          # all keys gone
+    problems = wf.compare(baseline, current)
+    assert any("missing keys" in p for p in problems), (
+        "records that lost ALL keys (count unchanged) must be flagged, got: "
+        + repr(problems)
+    )
+    # Boundary guard: an empty->keys baseline must NOT be flagged as a collapse
+    # (no keys were removed — there were none to remove).
+    empty_base = {"top": "dict", "keys": [], "count": 5}
+    got_keys = wf.fingerprint({"jobs": [{"id": i} for i in range(5)]})
+    assert not any("missing keys" in p for p in wf.compare(empty_base, got_keys)), (
+        "empty->keys is an addition, not a removal; must not report missing keys"
+    )
+
+
 def test_fingerprint_record_path_resolving_to_nonlist_degrades_not_crashes():
     # Regression: a mis-configured record_path that resolves to a NON-list node
     # (e.g. a dict) used to crash fingerprint() with
