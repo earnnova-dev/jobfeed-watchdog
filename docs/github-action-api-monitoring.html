@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monitor Any API with a GitHub Action: Fail the Build When It Breaks (2026)</title>
+  <meta name="description" content="A step-by-step guide to catching silent API breakage in CI: schema changes, record-count collapse, or outages. Copy a stdlib-only GitHub Action, add a feeds.json, and turn your build red the moment a JSON feed you depend on regresses. No server, no billing, no secrets.">
+  <meta name="keywords" content="github action api monitoring, monitor api in ci, fail build when api breaks, api uptime github action, json schema change detection, api regression test, watch json endpoint, github actions scheduled monitor, api feed watchdog, data feed monitoring github">
+  <link rel="canonical" href="https://earnnova-dev.github.io/jobfeed-watchdog/github-action-api-monitoring.html">
+  <link rel="alternate" type="text/html" href="/">
+  <meta property="og:title" content="Monitor Any API with a GitHub Action: Fail the Build When It Breaks (2026)">
+  <meta property="og:description" content="Copy a stdlib-only GitHub Action and turn your build red the moment a JSON/YAML feed you depend on silently breaks.">
+  <meta property="og:type" content="website">
+  <style>
+    :root{--bg:#0b1020;--card:#121a30;--ink:#e8ecf5;--mut:#9aa6c4;--acc:#5b8cff;--ok:#37d39b;--bad:#ff6b6b;--code:#0e1526}
+    *{box-sizing:border-box}
+    body{margin:0;font:16px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+    a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+    .wrap{max-width:940px;margin:0 auto;padding:0 20px}
+    header{padding:48px 0 24px}
+    h1{font-size:33px;line-height:1.2;margin:0 0 12px}
+    .sub{color:var(--mut);font-size:18px;margin:0 0 20px}
+    .cta{display:inline-block;background:var(--acc);color:#fff;padding:12px 22px;border-radius:10px;font-weight:600}
+    .cta:hover{filter:brightness(1.08);text-decoration:none}
+    section{background:var(--card);border:1px solid #1c2743;border-radius:14px;padding:24px;margin:22px 0}
+    h2{font-size:23px;margin:0 0 12px}
+    pre{background:var(--code);border:1px solid #1c2743;border-radius:10px;padding:16px;overflow:auto;font:13.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+    code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+    p code{background:#0e1526;padding:2px 6px;border-radius:5px}
+    ul{margin:8px 0 8px 20px} li{margin:6px 0}
+    ol{margin:8px 0 8px 22px} li{margin:8px 0}
+    table{width:100%;border-collapse:collapse;font-size:15px}
+    th,td{text-align:left;padding:9px 12px;border-bottom:1px solid #1c2743;vertical-align:top}
+    th{color:var(--mut);font-weight:600}
+    .badge{display:inline-block;background:#0e1526;border:1px solid #1c2743;border-radius:999px;padding:3px 12px;font-size:13px;color:var(--mut);margin:0 6px 6px 0}
+    .ok{color:var(--ok);font-weight:600}
+    .bad{color:var(--bad);font-weight:600}
+    .muted{color:var(--mut)}
+    .step{font:13px/1 var(--acc);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+    footer{padding:32px 0 48px;color:var(--mut);font-size:14px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Monitor Any API with a GitHub Action: fail the build when it breaks</h1>
+      <p class="sub">Your parser, your scraper, your integration &mdash; most silently rot. A feed returns 5 records instead of 300, a field gets renamed, the endpoint 404s, and nothing tells you until a customer does. This is the 30-second, zero-infra way to turn that into a red CI run you actually see.</p>
+      <a class="cta" href="#install">Set it up in 30 seconds</a>
+      <div style="margin-top:14px">
+        <span class="badge">Stdlib-only (urllib)</span>
+        <span class="badge">No secrets / no billing</span>
+        <span class="badge">Runs on a schedule</span>
+        <span class="badge">JSON &amp; YAML feeds</span>
+      </div>
+    </header>
+
+    <main>
+    <section>
+      <h2>What &ldquo;silently breaks&rdquo; actually means</h2>
+      <p>An API can be <em>up</em> and still <em>wrong</em> for your code. The four regressions that matter for a list-of-records endpoint &mdash; and the exact ones <a href="https://github.com/earnnova-dev/jobfeed-watchdog">jobfeed-watchdog</a> fingerprints on every run:</p>
+      <table>
+        <thead><tr><th>Signal</th><th>What it catches</th><th>Example</th></tr></thead>
+        <tbody>
+          <tr><td>Top-level container change</td><td><code>list</code> &rarr; <code>dict</code> (or vice-versa)</td><td>a response wrapper was added &mdash; <code>data[&ldquo;hits&rdquo;]</code> now <code>data[&ldquo;results&rdquo;]</code></td></tr>
+          <tr><td>Record key-set diff</td><td>a required field removed or renamed</td><td><code>price</code> becomes <code>price_usd</code> &mdash; your code reads <code>None</code></td></tr>
+          <tr><td>Record-count floor</td><td><code>count_ratio</code> / <code>min_count</code></td><td>parser broke &mdash; returns 5 of 300 instead of the real set</td></tr>
+          <tr><td>Fetch / parse / HTTP error</td><td>feed down or malformed</td><td>the endpoint 404s or returns HTML instead of JSON</td></tr>
+        </tbody>
+      </table>
+      <p class="muted">You don&rsquo;t need a test per field. You need a <strong>structural fingerprint</strong> &mdash; the shape of the data &mdash; compared to a known-good baseline, every run.</p>
+    </section>
+
+    <section id="install">
+      <h2>Step 1 &mdash; add the monitor (30 seconds)</h2>
+      <p>Clone the action into any repo you already have &mdash; the one that runs your parser/scraper/integration is the natural home:</p>
+      <pre>git clone https://github.com/earnnova-dev/jobfeed-watchdog
+cd jobfeed-watchdog
+cp -r watchfeed.py feeds.json .github/feeds-watcher.yml /path/to/your/repo</pre>
+      <p>Or copy just the two pieces that do the work &mdash; <code>watchfeed.py</code> (the fingerprint engine) and the workflow &mdash; and skip the rest. The core is stdlib-only; JSON feeds need <em>nothing</em> installed in CI. YAML feeds are optional (they need <code>pyyaml</code>).</p>
+    </section>
+
+    <section>
+      <h2>Step 2 &mdash; point it at your feeds</h2>
+      <p>One file, one JSON object, one entry per endpoint you depend on. <code>record_path</code> is the dotted path to the list of records &mdash; leave it out when the response <em>is</em> the array. The rest of the fields are optional:</p>
+      <pre>{
+  "feeds": [
+    {
+      "id": "remote-jobs-api",
+      "url": "https://remote-jobs-api.tten.no/v1/jobs",
+      "record_path": "jobs",
+      "count_ratio": 0.5,
+      "min_count": 5,
+      "timeout": 30
+    }
+  ]
+}</pre>
+      <p>Watch several at once by adding entries of the same shape:</p>
+      <pre>{
+  "feeds": [
+    { "id": "hn-ai",      "url": "https://hn.algolia.com/api/v1/search?query=ai", "record_path": "hits", "min_count": 3 },
+    { "id": "nyc-weather","url": "https://api.open-meteo.com/v1/forecast?latitude=40.7&longitude=-74.0", "record_path": "daily.temperature_2m_max", "min_count": 1 }
+  ]
+}</pre>
+      <ul>
+        <li><code>count_ratio</code> &mdash; fail if this run&rsquo;s record count drops below this fraction of the stored baseline (default <code>0.5</code>: a 50% collapse trips it).</li>
+        <li><code>min_count</code> &mdash; a hard floor, so an empty or nearly-empty feed always fails even on the first run.</li>
+        <li><code>timeout</code> &mdash; seconds before a fetch is treated as down.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Step 3 &mdash; the workflow that fails your build</h2>
+      <p>Drop this in <code>.github/feeds-watcher.yml</code>. It runs on a schedule (every 6 hours by default) and on manual dispatch, runs the fingerprinter against each feed, and turns the run <strong>red</strong> the moment one regresses &mdash; which is what GitHub Actions notifications (Slack / email / Discord) are built to page you about:</p>
+      <pre>name: Feed Watchdog
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # every 6 hours on the hour (UTC)
+  workflow_dispatch:
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # so it can commit a fresh baseline back when healthy
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check feeds
+        id: check
+        run: |
+          python3 watchfeed.py feeds.json state || status=$?
+          if [ -n "$status" ]; then
+            echo "::error::Feed breakage detected (see report above)"
+            exit 1
+          fi
+
+      - name: Commit new baseline (only when healthy)
+        if: steps.check.outcome == 'success'
+        run: |
+          git config user.name "feed-watchdog"
+          git config user.email "feed-watchdog@users.noreply.github.com"
+          git add state || true
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(watchdog): update baselines $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push
+          fi</pre>
+      <p>The <strong>baseline commit</strong> is the subtle part: it only writes a new <code>state/&lt;id&gt;.baseline.json</code> when the feed is healthy. A broken feed never gets &ldquo;blessed,&rdquo; so the baseline stays the last-known-good shape and the run keeps failing until the upstream is fixed. That&rsquo;s the whole trick &mdash; you&rsquo;re diffing every run against the last healthy shape, automatically.</p>
+    </section>
+
+    <section>
+      <h2>How it decides: the exit codes</h2>
+      <p>The engine prints a per-feed report, then exits with a code the workflow can branch on:</p>
+      <table>
+        <thead><tr><th>Code</th><th>Meaning</th><th>Build result</th></tr></thead>
+        <tbody>
+          <tr><td class="ok">0</td><td>all feeds healthy (or none configured)</td><td>green &mdash; baseline may refresh</td></tr>
+          <tr><td class="bad">1</td><td>one or more feeds broke (schema / count / down)</td><td>red &mdash; you get paged</td></tr>
+          <tr><td class="bad">2</td><td>usage / config error (bad <code>feeds.json</code>, bad <code>record_path</code>)</td><td>red &mdash; fix your config</td></tr>
+        </tbody>
+      </table>
+      <p>Because it&rsquo;s a plain non-zero exit, you can wire it into any pipeline that already fails on non-zero &mdash; no custom runner, no polling service, no paid uptime product.</p>
+    </section>
+
+    <section>
+      <h2>When to use this vs. a paid uptime monitor</h2>
+      <ul>
+        <li><strong>Use this</strong> when the failure that matters is <em>your</em> code&rsquo;s contract with the feed &mdash; a renamed field, a collapsed list, a reshaped response. Uptime monitors can&rsquo;t see your <code>record_path</code>; this can.</li>
+        <li><strong>Use a paid monitor</strong> for 24/7 availability paging, multi-region probing, and status pages. They run on your schedule for free on GitHub Actions and cost nothing &mdash; but they don&rsquo;t know what &ldquo;the right shape&rdquo; is for <em>your</em> data.</li>
+        <li><strong>Use both</strong> &mdash; a health-check for &ldquo;is it up&rdquo; and this for &ldquo;is it still shaped like I expect.&rdquo;</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Where to point it first</h2>
+      <p>Start with the feed you&rsquo;d most hate to find out is half-empty a week later. A ready set of live, no-auth, no-key endpoints that return a list of records &mdash; the exact shape this watches &mdash; is on the <a href="free-json-apis-to-monitor.html">10 free JSON APIs to monitor</a> page, each with its <code>record_path</code> already worked out. And if you want a realistic job-data feed to point at, the <a href="https://remote-jobs-api.tten.no">Remote Jobs API</a> serves 300+ deduped remote tech jobs with no key.</p>
+    </section>
+
+    <section>
+      <h2>Notes</h2>
+      <ul>
+        <li>Stdlib-only core (<code>urllib</code>); runs anywhere, no heavy installs in CI. YAML feeds are optional via <code>pyyaml</code>.</li>
+        <li>The fingerprints are deterministic and the pure functions are unit-testable with no network &mdash; you can extend the signals (new field, new container) without touching a live feed.</li>
+        <li>Schedule it to whatever cadence your feeds change at. 6 hours is the default; a per-minute monitor is fine for a canary but hammering rate-limited free tiers is how you get blocked.</li>
+        <li>This is MIT-licensed template code &mdash; copy it, fork it, make it yours. <a href="https://github.com/earnnova-dev/jobfeed-watchdog">View on GitHub</a>.</li>
+      </ul>
+    </section>
+    </main>
+
+    <footer class="wrap">
+      <p>Written by <a href="https://github.com/earnnova-dev">Nova</a> for <a href="/">jobfeed-watchdog</a> &mdash; the dependency-light GitHub Action that fails the build when a JSON feed silently breaks. <a href="/">Landing</a> &middot; <a href="free-json-apis-to-monitor.html">10 feeds to watch</a> &middot; <a href="https://pypi.org/project/jobfeed-watchdog/">PyPI</a> &middot; <a href="https://github.com/earnnova-dev/jobfeed-watchdog">GitHub</a></p>
+    </footer>
+  </div>
+</body>
+</html>
