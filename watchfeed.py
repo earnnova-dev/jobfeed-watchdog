@@ -169,14 +169,26 @@ def compare(baseline, current, count_ratio=0.5, min_count=0):
     b_count = baseline["count"]
     c_count = current["count"]
     if b_count > 0:
-        # ceil (not int/truncate): current must be >= baseline*ratio. A
-        # collapse strictly below the ratio floor must be flagged even on
-        # small feeds (e.g. 3 -> 1 at ratio 0.5). int() truncates toward
-        # zero and silently lets the collapse through.
-        floor = max(min_count, math.ceil(b_count * count_ratio))
-        if c_count < floor:
+        # A "drop" means the feed actually shrank. The ratio floor is inherently
+        # <= baseline (ceil(b*ratio) <= b for ratio <= 1), so it can never exceed
+        # the baseline and never report an unchanged feed as a drop. A genuine
+        # decrease below that floor is flagged here. ceil (not int/truncate) so a
+        # collapse on a small feed (3 -> 1 at ratio 0.5) is still caught.
+        if c_count < b_count:
+            ratio_floor = math.ceil(b_count * count_ratio)
+            if c_count < ratio_floor:
+                problems.append(
+                    "record count dropped: %d -> %d (floor %d)"
+                    % (b_count, c_count, ratio_floor)
+                )
+        # min_count is an operator-set absolute floor that may sit ABOVE the
+        # baseline (e.g. a feed that only ever serves ~5 records with a policy
+        # minimum of 10). An unchanged or grown feed is NOT a drop — flag it with
+        # its own accurate label so a monitoring run never pages on a feed that
+        # did not shrink.
+        if min_count and c_count < min_count:
             problems.append(
-                "record count dropped: %d -> %d (floor %d)" % (b_count, c_count, floor)
+                "record count below minimum: %d (min %d)" % (c_count, min_count)
             )
     if c_count == 0 and b_count > 0:
         problems.append("feed returned 0 records (was %d)" % b_count)

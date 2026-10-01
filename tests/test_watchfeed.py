@@ -193,12 +193,16 @@ def test_compare_small_feed_exact_half_not_flagged():
 
 
 def test_compare_min_count_still_wins_over_ratio():
-    # The absolute floor (min_count) must still override the ratio floor.
+    # The absolute floor (min_count) must still be enforced even when the
+    # ratio floor would be clean. Here current (2) is at/above the ratio floor
+    # (ceil(1*0.5)=1) but below min_count=3, so it is flagged — with the
+    # accurate "below minimum" label (the feed GREW 1 -> 2, so it is NOT a
+    # "drop").
     a = {"top": "dict", "keys": ["id"], "count": 1}
     b = {"top": "dict", "keys": ["id"], "count": 2}
-    # ratio floor = ceil(1*0.5)=1, but min_count=3 -> floor 3, current 2 < 3
     problems = wf.compare(a, b, count_ratio=0.5, min_count=3)
-    assert any("count dropped" in p for p in problems), problems
+    assert any("below minimum" in p for p in problems), problems
+    assert not any("count dropped" in p for p in problems), problems
 
 
 def test_compare_records_lost_all_keys_is_flagged_not_silently_passed():
@@ -247,3 +251,38 @@ def test_fingerprint_record_path_resolving_to_nonlist_degrades_not_crashes():
     fp2 = wf.fingerprint(data, record_path="data.items")
     assert fp2["count"] == 1
     assert "id" in fp2["keys"]
+
+
+def test_compare_min_count_above_baseline_unchanged_feed_not_reported_as_drop():
+    # Regression: when the operator's absolute floor (min_count) is set ABOVE
+    # the baseline, the old code computed floor=max(min_count, ceil(b*ratio)),
+    # so an UNCHANGED feed (5 -> 5) was falsely flagged "record count dropped:
+    # 5 -> 5". A feed that did not shrink is not a drop. It is still below the
+    # operator's minimum, but that must be reported with its own accurate
+    # label, never as a "drop".
+    a = {"top": "list", "keys": ["id"], "count": 5}
+    b = {"top": "list", "keys": ["id"], "count": 5}
+    problems = wf.compare(a, b, count_ratio=0.5, min_count=10)
+    assert not any("count dropped" in p for p in problems), problems
+    assert any("below minimum" in p for p in problems), problems
+
+
+def test_compare_min_count_above_baseline_grown_feed_not_reported_as_drop():
+    # Regression: a feed that GREW (5 -> 7) but is still below min_count=10
+    # must not be reported as "dropped" — it went up, not down.
+    a = {"top": "list", "keys": ["id"], "count": 5}
+    b = {"top": "list", "keys": ["id"], "count": 7}
+    problems = wf.compare(a, b, count_ratio=0.5, min_count=10)
+    assert not any("count dropped" in p for p in problems), problems
+    assert any("below minimum" in p for p in problems), problems
+
+
+def test_compare_ratio_drop_message_unchanged_and_min_count_absent_is_clean():
+    # The genuine relative-drop message must stay byte-stable for CI consumers
+    # that grep the report, and a healthy unchanged feed with no min_count must
+    # be clean.
+    a = {"top": "list", "keys": ["id"], "count": 100}
+    problems = wf.compare(a, {"top": "list", "keys": ["id"], "count": 20})
+    assert any("record count dropped: 100 -> 20 (floor 50)" in p for p in problems), problems
+    clean = wf.compare(a, {"top": "list", "keys": ["id"], "count": 100})
+    assert clean == []
