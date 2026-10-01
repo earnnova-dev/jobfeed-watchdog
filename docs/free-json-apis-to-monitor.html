@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>10 Free Public JSON APIs to Monitor (2026) — No Auth, Ready to Watch</title>
+  <meta name="description" content="A curated list of 10 free, no-auth public JSON APIs you can point at a data-feed monitor today. Each endpoint is live, returns a list of records, and ships with the exact record_path + GitHub Action config to catch silent breakage.">
+  <meta name="keywords" content="free json api no auth, public json api list, monitor json api, api feed monitoring, json api for developers, free api endpoints, watch json endpoint, data feed breakage, json api examples">
+  <link rel="canonical" href="https://earnnova-dev.github.io/jobfeed-watchdog/free-json-apis-to-monitor.html">
+  <link rel="alternate" type="text/html" href="/">
+  <meta property="og:title" content="10 Free Public JSON APIs to Monitor (2026)">
+  <meta property="og:description" content="Live, no-auth JSON endpoints you can monitor for silent breakage — each with a ready-to-paste record_path and GitHub Action config.">
+  <meta property="og:type" content="website">
+  <style>
+    :root{--bg:#0b1020;--card:#121a30;--ink:#e8ecf5;--mut:#9aa6c4;--acc:#5b8cff;--ok:#37d39b;--bad:#ff6b6b;--code:#0e1526}
+    *{box-sizing:border-box}
+    body{margin:0;font:16px/1.6 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+    a{color:var(--acc);text-decoration:none} a:hover{text-decoration:underline}
+    .wrap{max-width:940px;margin:0 auto;padding:0 20px}
+    header{padding:48px 0 24px}
+    h1{font-size:33px;line-height:1.2;margin:0 0 12px}
+    .sub{color:var(--mut);font-size:18px;margin:0 0 20px}
+    .cta{display:inline-block;background:var(--acc);color:#fff;padding:12px 22px;border-radius:10px;font-weight:600}
+    .cta:hover{filter:brightness(1.08);text-decoration:none}
+    section{background:var(--card);border:1px solid #1c2743;border-radius:14px;padding:24px;margin:22px 0}
+    h2{font-size:23px;margin:0 0 12px}
+    pre{background:var(--code);border:1px solid #1c2743;border-radius:10px;padding:16px;overflow:auto;font:13.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+    code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+    p code{background:#0e1526;padding:2px 6px;border-radius:5px}
+    ul{margin:8px 0 8px 20px} li{margin:6px 0}
+    table{width:100%;border-collapse:collapse;font-size:15px}
+    th,td{text-align:left;padding:9px 12px;border-bottom:1px solid #1c2743;vertical-align:top}
+    th{color:var(--mut);font-weight:600}
+    .badge{display:inline-block;background:#0e1526;border:1px solid #1c2743;border-radius:999px;padding:3px 12px;font-size:13px;color:var(--mut);margin:0 6px 6px 0}
+    .ok{color:var(--ok);font-weight:600}
+    .muted{color:var(--mut)}
+    footer{padding:32px 0 48px;color:var(--mut);font-size:14px}
+  </style>
+</head>
+<body>
+  <header class="wrap">
+    <h1>10 free public JSON APIs you can monitor &mdash; no auth, live today</h1>
+    <p class="sub">Every endpoint below is <strong>free, requires no API key</strong>, and returns a list of records &mdash; the exact shape <a href="/"><code>jobfeed-watchdog</code></a> watches. Each row ships the endpoint, the <code>record_path</code> to the list, and a ready-to-paste config so you can catch a silent schema change, record-count collapse, or outage the moment it happens. <span class="muted">(All 10 were verified live &amp; key-free on 2026-10-01.)</span></p>
+    <a class="cta" href="#start">Pick one and start watching in 30 seconds</a>
+  </header>
+
+  <main class="wrap">
+    <section>
+      <h2>Why these 10</h2>
+      <p>Most "API listicles" are stale and full of endpoints that need a key, a rate-limited tier, or a dead redirect. This list is the opposite: each endpoint was <em>called and checked this month</em> &mdash; it returned <span class="ok">HTTP 200</span> with a real list, with <strong>zero authentication</strong>, so a monitor has nothing to configure beyond the URL. If any of them break or change shape, <a href="/">jobfeed-watchdog</a> turns your build red &mdash; which is exactly what it is built to do.</p>
+      <p>Use them as a <strong>canary set</strong>: point a monitor at a couple of the most critical feeds you actually consume, and the rest become a cheap "is the internet still normal" tripwire. Because the core is stdlib-only and runs as a GitHub Action, monitoring any of these costs nothing.</p>
+      <span class="badge">No API keys</span>
+      <span class="badge">All HTTP 200 + real list</span>
+      <span class="badge">Stdlib-only monitor</span>
+      <span class="badge">Runs free on GitHub Actions</span>
+    </section>
+
+    <section>
+      <h2>The list</h2>
+      <table>
+        <tr><th>API</th><th>Live endpoint (no auth)</th><th>record_path</th><th>What you're watching</th></tr>
+        <tr><td><strong>Remote Jobs API</strong></td><td><code>remote-jobs-api.tten.no/v1/jobs</code></td><td><code>jobs</code></td><td>300+ deduped remote tech jobs &mdash; the feed this tool was built for</td></tr>
+        <tr><td><strong>Hacker News (Algolia)</strong></td><td><code>hn.algolia.com/api/v1/search?query=ai</code></td><td><code>hits</code></td><td>HN stories by keyword &mdash; a good "is the search API up" canary</td></tr>
+        <tr><td><strong>GitHub Events</strong></td><td><code>api.github.com/events</code></td><td><code>(top-level list)</code></td><td>Public GitHub activity stream &mdash; also a clean auth-free rate-limit probe</td></tr>
+        <tr><td><strong>iTunes Search</strong></td><td><code>itunes.apple.com/search?term=python&amp;media=music</code></td><td><code>results</code></td><td>Music/app/search results &mdash; classic list-of-objects shape</td></tr>
+        <tr><td><strong>Open Library</strong></td><td><code>openlibrary.org/search.json?author=asimov</code></td><td><code>docs</code></td><td>Book metadata search &mdash; free, stable, no key</td></tr>
+        <tr><td><strong>Wikipedia (Search API)</strong></td><td><code>en.wikipedia.org/w/api.php?action=query&amp;list=search&amp;format=json</code></td><td><code>query.search</code></td><td>Wikipedia search results &mdash; a high-traffic public dependency</td></tr>
+        <tr><td><strong>Open-Meteo (Forecast)</strong></td><td><code>api.open-meteo.com/v1/forecast?latitude=40.7&amp;longitude=-74.0</code></td><td><code>daily.temperature_2m_max</code></td><td>Weather data &mdash; no key, no tier, perfect uptime canary</td></tr>
+        <tr><td><strong>npm Registry (Search)</strong></td><td><code>registry.npmjs.org/-/v1/search?text=express</code></td><td><code>objects</code></td><td>npm package search &mdash; the package index your app depends on</td></tr>
+        <tr><td><strong>CoinGecko</strong></td><td><code>api.coingecko.com/api/v3/coins/markets?vs_currency=usd</code></td><td><code>(top-level list)</code></td><td>Crypto market data &mdash; free tier, no key for basic markets</td></tr>
+        <tr><td><strong>JSONPlaceholder</strong></td><td><code>jsonplaceholder.typicode.com/photos</code></td><td><code>(top-level list)</code></td><td>A static, never-changes fixture &mdash; the baseline "my monitor works" control</td></tr>
+      </table>
+      <p class="muted"><code>(top-level list)</code> means the JSON response <em>is</em> the array, so you can leave <code>record_path</code> out of the config entirely. The rest are arrays nested inside an object &mdash; that's the <code>record_path</code> column.</p>
+    </section>
+
+    <section id="start">
+      <h2>Start watching one in 30 seconds</h2>
+      <p>Clone the action, drop in a <code>feeds.json</code>, and you're done. Here's the exact config for the first entry on the list &mdash; it's the feed this tool was built for:</p>
+<pre>{
+  "feeds": [
+    {
+      "id": "remote-jobs-api",
+      "url": "https://remote-jobs-api.tten.no/v1/jobs",
+      "record_path": "jobs",
+      "count_ratio": 0.5,
+      "min_count": 5,
+      "timeout": 30
+    }
+  ]
+}</pre>
+      <p>Then monitor any other endpoint from the table by adding the same shape with its URL and <code>record_path</code>. Want to watch the HN and weather feeds at once?</p>
+<pre>{
+  "feeds": [
+    { "id": "hn-ai", "url": "https://hn.algolia.com/api/v1/search?query=ai", "record_path": "hits", "min_count": 3 },
+    { "id": "nyc-weather", "url": "https://api.open-meteo.com/v1/forecast?latitude=40.7&longitude=-74.0", "record_path": "daily.temperature_2m_max", "min_count": 1 }
+  ]
+}</pre>
+      <p>Run it on a schedule (the action defaults to every 6 hours) and GitHub pages you via your normal Actions notifications when a feed's shape or count regresses. The whole setup is in the <a href="https://github.com/earnnova-dev/jobfeed-watchdog">repo README</a> &mdash; no server, no secrets, no billing.</p>
+      <p><a class="cta" href="/">&larr; Back to the jobfeed-watchdog landing</a> &nbsp;&nbsp; <a class="cta" href="https://github.com/earnnova-dev/jobfeed-watchdog">View on GitHub</a></p>
+    </section>
+
+    <section>
+      <h2>Fair-use notes</h2>
+      <ul>
+        <li>All of these are public, no-auth endpoints as of <strong>2026-10-01</strong>. Some (GitHub, CoinGecko) have rate limits on their free tiers &mdash; a 6-hourly monitor stays well inside them; don't hammer them per-minute.</li>
+        <li>If an endpoint's shape is nested deeper, set <code>record_path</code> to the dotted path of the list (e.g. <code>query.search</code> for Wikipedia).</li>
+        <li>These are third-party services. This page is a convenience reference &mdash; check each service's terms if you build on top of them commercially.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    <p>Curated &amp; verified by <a href="https://github.com/earnnova-dev">Nova</a> for <a href="/">jobfeed-watchdog</a> &mdash; the dependency-light GitHub Action that fails the build when a JSON feed silently breaks. <a href="/">jobfeed-watchdog</a> &middot; <a href="https://pypi.org/project/jobfeed-watchdog/">PyPI</a> &middot; <a href="https://github.com/earnnova-dev/jobfeed-watchdog">GitHub</a></p>
+  </footer>
+</body>
+</html>
