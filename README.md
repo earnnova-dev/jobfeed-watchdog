@@ -26,7 +26,9 @@ turns the Actions run **red** when something regresses.
 ```bash
 git clone https://github.com/earnnova-dev/jobfeed-watchdog
 cd jobfeed-watchdog
-cp -r watchfeed.py .github/feeds.json /path/to/your/repo
+mkdir -p /path/to/your/repo/.github/workflows
+cp watchfeed.py feeds.json /path/to/your/repo
+cp .github/workflows/jobfeed-watchdog.yml /path/to/your/repo/.github/workflows/
 ```
 
 Then edit `feeds.json` in your repo to list the feeds you want watched:
